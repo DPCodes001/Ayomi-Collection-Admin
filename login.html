@@ -485,7 +485,14 @@ select.fsel option{background:var(--surface2)}
                 <div class="fld"><label>Category <span class="req">*</span></label><select id="fCat" onchange="updatePrev()"><option value="">Select Category</option><option>Clothing</option><option>Shoes</option><option>Perfumes</option><option>Kitchen Utensils</option><option>Electronics</option><option>Bags</option><option>Accessories</option><option>Other</option></select></div>
               </div>
               <div class="fld"><label>Description <span class="req">*</span></label><textarea id="fDesc" rows="4" placeholder="Describe the product…" oninput="updatePrev()"></textarea></div>
-              <div class="fld"><label>Image URL or Emoji</label><input type="text" id="fImg" placeholder="https://… or 👗" oninput="updatePrev()"/></div>
+              <div class="fld">
+  <label>Product Image</label>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input type="text" id="fImg" placeholder="https://… or paste URL or click Upload" oninput="updatePrev()" style="flex:1"/>
+    <button type="button" id="imgUploadBtn" onclick="triggerImageUpload('fImg')" style="background:var(--accent3);border:none;border-radius:var(--rs);padding:10px 14px;color:#000;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">📸 Upload Image</button>
+  </div>
+  <small>Upload a photo or paste an image URL. Emoji like 👗 also works.</small>
+</div>
               <div class="fld"><label>Source / Supplier Group</label><input type="text" id="fSrc" placeholder="e.g. Lagos Wholesale Fashion Group" oninput="updatePrev()"/></div>
               <div class="formrow">
                 <div class="fld"><label>Tags</label><input type="text" id="fTags" placeholder="fashion, trending"/></div>
@@ -633,7 +640,16 @@ select.fsel option{background:var(--surface2)}
     <div class="formrow"><div class="fld"><label>Name</label><input type="text" id="emName"/></div><div class="fld"><label>Category</label><select id="emCat"><option>Clothing</option><option>Shoes</option><option>Perfumes</option><option>Kitchen Utensils</option><option>Electronics</option><option>Bags</option><option>Accessories</option><option>Other</option></select></div></div>
     <div class="fld"><label>Description</label><textarea id="emDesc" rows="3"></textarea></div>
     <div class="formrow"><div class="fld"><label>Supplier Price (₦)</label><input type="number" id="emSup" oninput="calcEmSell()"/></div><div class="fld"><label>Selling Price (₦)</label><input type="number" id="emSell"/></div></div>
-    <div class="formrow"><div class="fld"><label>Image URL / Emoji</label><input type="text" id="emImg"/></div><div class="fld"><label>Source</label><input type="text" id="emSrc"/></div></div>
+    <div class="formrow">
+  <div class="fld">
+    <label>Image</label>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="text" id="emImg" placeholder="URL or emoji" style="flex:1"/>
+      <button type="button" onclick="triggerEditImageUpload()" style="background:var(--accent3);border:none;border-radius:var(--rs);padding:9px 12px;color:#000;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0">📸 Upload</button>
+    </div>
+  </div>
+  <div class="fld"><label>Source</label><input type="text" id="emSrc"/></div>
+</div>
   </div>
   <div class="emfoot"><button class="btns" onclick="closeEdit()">Cancel</button><button class="btnp" onclick="saveEdit()">Save Changes</button></div>
 </div>
@@ -651,14 +667,12 @@ select.fsel option{background:var(--surface2)}
 <div class="twrap" id="toastWrap"></div>
 
 <script>
-// AYOMI COLLECTION — Complete Admin Script
-// All functions verified and working
-
 const SUPA_URL = 'https://vuqajdjwqudacyzdcgyx.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1cWFqZGp3cXVkYWN5emRjZ3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTU2NjIsImV4cCI6MjA4OTE3MTY2Mn0.na9WvsXb_K7Jb7LWHxxz2RmFavnNmlLuNH0mX0YHftg';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let MARKUP = parseInt(localStorage.getItem('ayomi_markup') || '2000');
+// NO DEMO DATA — always load from Supabase only
 let products = [], orders = [], parseHist = [], editingId = null, selIds = new Set();
 
 const CATMAP = {Clothing:'👗',Shoes:'👟',Perfumes:'🌹','Kitchen Utensils':'🍳',Electronics:'📱',Bags:'👜',Accessories:'💍',Other:'📦'};
@@ -672,31 +686,58 @@ const CAT_KEYS = {
   Accessories:['ring','necklace','bracelet','earring','jewel','accessory','bangle','wristwatch','sunglasses','belt','hat','cap','scarf','brooch','chain'],
 };
 
-const DEMO = [
-  {id:'d1',name:'Ankara Floral Maxi Dress',description:'Beautiful Ankara fabric maxi dress. Available in sizes S-XL.',supplier_price:8500,selling_price:10500,category:'Clothing',image_url:'👗',source:'Lagos Fashion Group',created_at:new Date(Date.now()-86400000).toISOString(),status:'active'},
-  {id:'d2',name:'Nike Air Max 270 (Original)',description:'Authentic Nike Air Max sneakers. Sizes 40-45.',supplier_price:35000,selling_price:37000,category:'Shoes',image_url:'👟',source:'Abuja Shoe Wholesale',created_at:new Date(Date.now()-2*86400000).toISOString(),status:'active'},
-  {id:'d3',name:'Samsung Galaxy S24 Ultra',description:'Latest Samsung flagship. Nigerian warranty included.',supplier_price:350000,selling_price:352000,category:'Electronics',image_url:'📱',source:'Electronics Hub NG',created_at:new Date(Date.now()-3*86400000).toISOString(),status:'active'},
-  {id:'d4',name:'Versace Eros Perfume 100ml',description:'Original Versace Eros eau de toilette. Comes with gift box.',supplier_price:28000,selling_price:30000,category:'Perfumes',image_url:'🌹',source:'Perfume Palace NG',created_at:new Date(Date.now()-4*86400000).toISOString(),status:'active'},
-  {id:'d5',name:'Non-Stick Cooking Set 7pc',description:'Premium 7-piece granite non-stick pot and pan set.',supplier_price:22000,selling_price:24000,category:'Kitchen Utensils',image_url:'🍳',source:'Home & Kitchen NG',created_at:new Date(Date.now()-5*86400000).toISOString(),status:'active'},
-  {id:'d6',name:'Gucci GG Supreme Tote Bag',description:'Premium quality tote bag with gold-tone hardware.',supplier_price:18000,selling_price:20000,category:'Bags',image_url:'👜',source:'Fashion Bags Lagos',created_at:new Date(Date.now()-6*86400000).toISOString(),status:'active'},
-  {id:'d7',name:'Gold Layered Necklace Set',description:'18k gold-plated layered necklace set. 3 pieces.',supplier_price:7500,selling_price:9500,category:'Accessories',image_url:'💍',source:'Jewellery Palace NG',created_at:new Date(Date.now()-7*86400000).toISOString(),status:'active'},
-];
-
-// DB HELPERS
+// ── DB HELPERS ──────────────────────────────────
 async function dbGet(q=''){
-  try{const r=await fetch(`${SUPA_URL}/rest/v1/products?${q}&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});return r.ok?await r.json():null;}catch{return null;}
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/products?${q}&order=created_at.desc`,
+      {headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});
+    return r.ok?await r.json():[];
+  }catch{return [];}
 }
 async function dbAdd(table,data){
-  try{const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,{method:'POST',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(data)});return r.ok?await r.json():null;}catch{return null;}
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/${table}`,
+      {method:'POST',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+      body:JSON.stringify(data)});
+    return r.ok?await r.json():null;
+  }catch{return null;}
 }
 async function dbPatch(id,data){
-  try{await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${id}`,{method:'PATCH',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json'},body:JSON.stringify(data)});}catch{}
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${id}`,
+      {method:'PATCH',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(data)});
+    return true;
+  }catch{return false;}
 }
 async function dbDel(id){
-  try{await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${id}`,{method:'DELETE',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});}catch{}
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/products?id=eq.${id}`,
+      {method:'DELETE',headers:{apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY}});
+    return true;
+  }catch{return false;}
 }
 
-// LOGIN
+// ── IMAGE UPLOAD TO SUPABASE STORAGE ────────────
+async function uploadImageToSupabase(file) {
+  const filename = 'product_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g,'_');
+  try {
+    const r = await fetch(`${SUPA_URL}/storage/v1/object/product-image/${filename}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: 'Bearer ' + SUPA_KEY,
+        'Content-Type': file.type || 'image/jpeg',
+        'Cache-Control': '3600',
+      },
+      body: file,
+    });
+    if (!r.ok) { console.warn('Upload failed:', await r.text()); return null; }
+    return `${SUPA_URL}/storage/v1/object/public/product-image/${filename}`;
+  } catch(e) { console.warn('Upload error:', e.message); return null; }
+}
+
+// ── LOGIN ────────────────────────────────────────
 async function doLogin(e){
   e.preventDefault();
   const email=g('loginEmail').value.trim(), pw=g('loginPw').value;
@@ -704,7 +745,7 @@ async function doLogin(e){
   setLoginLoading(true);
   try{
     const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error){showErr(error.message.includes('Invalid')?'❌ Wrong email or password.':'❌ '+error.message);setLoginLoading(false);return;}
+    if(error){showErr('❌ '+( error.message.includes('Invalid')?'Wrong email or password.':error.message));setLoginLoading(false);return;}
     showOk('✅ Login successful! Loading dashboard…');
     setTimeout(()=>showDash(data.user.email),700);
   }catch(err){showErr('Error: '+err.message);setLoginLoading(false);}
@@ -714,7 +755,7 @@ function showErr(m){const el=g('loginErr');el.textContent=m;el.classList.add('sh
 function showOk(m){const el=g('loginOk');el.textContent=m;el.classList.add('show');g('loginErr').classList.remove('show');}
 function toggleEye(){const i=g('loginPw');i.type=i.type==='password'?'text':'password';}
 
-// INIT
+// ── INIT ─────────────────────────────────────────
 (async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session) showDash(session.user.email);
@@ -727,55 +768,46 @@ async function showDash(email){
   g('sbAvatar').textContent=init; g('sbName').textContent=name; g('sbEmail').textContent=email;
   g('ucAv').textContent=init; g('ucEmail').textContent=email;
   g('dashWelcome').textContent='Welcome back, '+name+'! 👋';
-  loadLocal(); loadSettings(); startClock(); renderOrders(); updateCatCounts();
-  await syncSupabase(); updateDash(); switchTab('dashboard');
+  loadSettings(); startClock(); renderOrders(); 
+  await syncSupabase(); // Always load from Supabase first
+  switchTab('dashboard');
 }
 
 async function doLogout(){
   await sb.auth.signOut();
   g('dashPage').classList.remove('show');
   g('loginPage').classList.remove('hide');
-  g('loginPw').value=''; g('loginErr').classList.remove('show'); g('loginOk').classList.remove('show');
+  g('loginPw').value='';
+  g('loginErr').classList.remove('show');
+  g('loginOk').classList.remove('show');
 }
 
-// CLOCK
+// ── CLOCK ────────────────────────────────────────
 function startClock(){
   const tick=()=>{const el=g('tbTime');if(el)el.textContent=new Date().toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit',second:'2-digit'});};
   tick(); setInterval(tick,1000);
 }
 
-// LOCAL DATA
-function loadLocal(){
-  const saved=JSON.parse(localStorage.getItem('ayomi_products')||'[]');
-  const dIds=DEMO.map(p=>p.id);
-  products=[...saved,...DEMO.filter(p=>!saved.find(s=>s.id===p.id))];
-  orders=JSON.parse(localStorage.getItem('ayomi_orders')||'[]');
-  parseHist=JSON.parse(localStorage.getItem('ayomi_parse_history')||'[]');
-  updateBadges();
-}
-function saveLocalProds(){
-  const dIds=DEMO.map(p=>p.id);
-  localStorage.setItem('ayomi_products',JSON.stringify(products.filter(p=>!dIds.includes(p.id))));
-}
+// ── SETTINGS ─────────────────────────────────────
 function loadSettings(){
   const aiEl=g('sAiKey');if(aiEl){const v=localStorage.getItem('ayomi_ai_key');if(v)aiEl.value=v;}
   const mEl=g('sMarkup');if(mEl)mEl.value=MARKUP;
+  orders=JSON.parse(localStorage.getItem('ayomi_orders')||'[]');
+  parseHist=JSON.parse(localStorage.getItem('ayomi_parse_history')||'[]');
 }
 
-// SUPABASE SYNC
+// ── SUPABASE SYNC — PRIMARY DATA SOURCE ──────────
 async function syncSupabase(){
-  const data=await dbGet('select=*&status=eq.active');
-  if(data&&data.length>0){
-    const sIds=data.map(p=>p.id);
-    const localOnly=products.filter(p=>!sIds.includes(p.id));
-    products=[...data,...localOnly];
-    updateBadges();
-    toast('✅ Synced '+data.length+' products from Supabase','success');
-  }
-  updateDash(); renderProdsTable(); updateCatCounts();
+  toast('🔄 Loading from database…','info');
+  const data = await dbGet('select=*');
+  // Use ONLY Supabase data — no demo, no local merge
+  products = data || [];
+  updateBadges(); updateDash(); renderProdsTable(); updateCatCounts();
+  if(products.length > 0) toast('✅ Loaded '+products.length+' products','success');
+  else toast('ℹ️ No products yet — add some!','info');
 }
 
-// TABS
+// ── TABS ─────────────────────────────────────────
 function switchTab(tab){
   document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('active'));
@@ -792,31 +824,35 @@ function switchTab(tab){
 function toggleSidebar(){g('sidebar').classList.toggle('collapsed');}
 function toggleMobSidebar(){g('sidebar').classList.toggle('mob-open');}
 
-// DASHBOARD
+// ── DASHBOARD ────────────────────────────────────
 function updateDash(){
-  const active=products.filter(p=>p.status!=='deleted');
-  setText('sProd',active.length); setText('sOrd',orders.length);
-  const profit=active.reduce((a,p)=>a+(p.selling_price-p.supplier_price),0);
+  const active=products.filter(p=>p.status!=='deleted'&&p.status!=='out');
+  setText('sProd',products.length);
+  setText('sOrd',orders.length);
+  const profit=products.reduce((a,p)=>a+((p.selling_price||0)-(p.supplier_price||0)),0);
   setText('sRev','₦'+fmt(profit));
   const tbody=g('dashTbody'); if(!tbody)return;
-  const recent=[...active].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
-  if(!recent.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">No products yet — use AI Parser to add from WhatsApp</td></tr>';return;}
+  const recent=[...products].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8);
+  if(!recent.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">No products yet. Add products using the AI Parser or Add Product tab.</td></tr>';
+    return;
+  }
   tbody.innerHTML=recent.map(p=>`<tr>
     <td><div class="tdprod"><div class="tdimg">${imgH(p.image_url)}</div><div><strong>${esc(p.name)}</strong><span>${esc(p.source||'—')}</span></div></div></td>
     <td><span class="cchip">${p.category}</span></td>
     <td class="pricet">₦${fmt(p.supplier_price)}</td>
     <td class="pricet pricea">₦${fmt(p.selling_price)}</td>
-    <td><span class="mpos">+₦${fmt(p.selling_price-p.supplier_price)}</span></td>
-    <td><span class="sp sp${(p.status||'active').replace(' ','')}">${p.status||'active'}</span></td>
+    <td><span class="mpos">+₦${fmt((p.selling_price||0)-(p.supplier_price||0))}</span></td>
+    <td><span class="sp sp${(p.status||'active').replace(/\s/g,'')}">${p.status||'active'}</span></td>
     <td><div class="tdact"><button class="actbtn" onclick="openEdit('${p.id}')">✏️ Edit</button><button class="actbtn del" onclick="askDel('${p.id}')">🗑️</button></div></td>
   </tr>`).join('');
 }
 
-// PRODUCTS TABLE
+// ── PRODUCTS TABLE ───────────────────────────────
 function renderProdsTable(){
   const search=(g('prodSearch')?.value||'').toLowerCase();
   const cat=g('catFilter')?.value||'';
-  let prods=products.filter(p=>p.status!=='deleted');
+  let prods=[...products];
   if(cat) prods=prods.filter(p=>p.category===cat);
   if(search) prods=prods.filter(p=>p.name.toLowerCase().includes(search)||p.category.toLowerCase().includes(search));
   const lbl=g('prodCountLbl'); if(lbl)lbl.textContent=prods.length+' product'+(prods.length!==1?'s':'')+' in catalogue';
@@ -830,14 +866,13 @@ function renderProdsTable(){
       <td><span class="cchip">${p.category}</span></td>
       <td class="pricet">₦${fmt(p.supplier_price)}</td>
       <td class="pricet pricea">₦${fmt(p.selling_price)}</td>
-      <td><span class="mpos">+₦${fmt(p.selling_price-p.supplier_price)}</span></td>
+      <td><span class="mpos">+₦${fmt((p.selling_price||0)-(p.supplier_price||0))}</span></td>
       <td style="font-size:11px;color:var(--muted)">${esc(p.source||'—')}</td>
       <td style="font-size:11px;color:var(--muted)">${date}</td>
       <td><div class="tdact"><button class="actbtn" onclick="openEdit('${p.id}')">✏️ Edit</button><button class="actbtn del" onclick="askDel('${p.id}')">🗑️</button></div></td>
     </tr>`;
   }).join('');
 }
-
 function toggleSel(pid,cb){
   if(cb.checked)selIds.add(pid);else selIds.delete(pid);
   const bb=g('bulkBar'); if(bb)bb.style.display=selIds.size>0?'flex':'none';
@@ -851,22 +886,50 @@ function toggleSelAll(){
     if(m){if(c)selIds.add(m[1]);else selIds.delete(m[1]);}
   });
   const bb=g('bulkBar'); if(bb)bb.style.display=selIds.size>0?'flex':'none';
-  const sc=g('selCount'); if(sc)sc.textContent=selIds.size+' selected';
 }
 function bulkDel(){
   if(!selIds.size)return;
-  confirm2('Delete '+selIds.size+' products?','This is permanent.',async()=>{
-    for(const pid of selIds){const p=products.find(x=>x.id===pid);if(p){p.status='deleted';await dbDel(pid);}}
-    selIds.clear(); saveLocalProds(); renderProdsTable(); updateDash(); updateBadges();
-    g('bulkBar').style.display='none'; toast('Products deleted','error');
+  confirm2('Delete '+selIds.size+' products?','This will permanently delete them from your database.',async()=>{
+    for(const pid of selIds){ await dbDel(pid); }
+    selIds.clear();
+    await syncSupabase();
+    g('bulkBar').style.display='none';
+    toast('Products deleted from database','error');
   });
 }
 
-// PRODUCT FORM
+// ── IMAGE UPLOAD HELPER ──────────────────────────
+function triggerImageUpload(targetInputId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const btn = g('imgUploadBtn');
+    if(btn){ btn.textContent = '⏳ Uploading…'; btn.disabled = true; }
+    toast('📤 Uploading image…', 'info');
+    const url = await uploadImageToSupabase(file);
+    if (url) {
+      const el = g(targetInputId);
+      if(el) el.value = url;
+      updatePrev();
+      toast('✅ Image uploaded!', 'success');
+    } else {
+      toast('❌ Upload failed. Check Supabase Storage bucket exists.', 'error');
+    }
+    if(btn){ btn.textContent = '📸 Upload Image'; btn.disabled = false; }
+  };
+  input.click();
+}
+
+// ── PRODUCT FORM ─────────────────────────────────
 function updatePrev(){
   const v=id=>g(id)?.value||'';
-  setText('prevName',v('fName')||'Product Name'); setText('prevCat',v('fCat')||'Category');
-  setText('prevDesc',v('fDesc')||'Description…'); setText('prevPrice','₦'+fmt(parseFloat(v('fSelling'))||0));
+  setText('prevName',v('fName')||'Product Name');
+  setText('prevCat',v('fCat')||'Category');
+  setText('prevDesc',v('fDesc')||'Description…');
+  setText('prevPrice','₦'+fmt(parseFloat(v('fSelling'))||0));
   setText('prevSrc','Source: '+(v('fSrc')||'—'));
   const img=v('fImg'); const el=g('prevImg');
   if(el)el.innerHTML=img.startsWith('http')?`<img src="${img}" style="max-width:100%;max-height:100%;object-fit:cover;border-radius:4px" onerror="this.parentElement.textContent='📦'">`:img||'📦';
@@ -890,19 +953,22 @@ async function saveProduct(){
   const src=g('fSrc')?.value?.trim()||'';
   const status=g('fStatus')?.value||'active';
   if(!name||!cat||!sup||!desc){showFormMsg('Please fill in all required fields (*)','error');return;}
+  
+  const productData = {name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:img,source:src,status};
+  
   if(editingId){
-    const idx=products.findIndex(p=>p.id===editingId);
-    if(idx>=0){products[idx]={...products[idx],name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:img,source:src,status};await dbPatch(editingId,products[idx]);}
-    editingId=null; setText('formTitle','Add New Product'); toast('✅ Product updated!','success');
+    const ok = await dbPatch(editingId, productData);
+    if(ok){ toast('✅ Product updated in database!','success'); }
+    else { toast('❌ Update failed','error'); return; }
+    editingId=null; setText('formTitle','Add New Product');
   }else{
-    const np={id:Date.now().toString(),name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:img,source:src,status,created_at:new Date().toISOString()};
-    const saved=await dbAdd('products',{name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:img,source:src,status});
-    if(saved&&saved[0])np.id=saved[0].id;
-    products.unshift(np); toast('✅ Saved to '+cat+'!','success');
+    const saved=await dbAdd('products', productData);
+    if(saved){ toast('✅ Product saved to database!','success'); }
+    else { toast('❌ Save failed — check connection','error'); return; }
   }
-  saveLocalProds(); updateBadges(); updateDash(); updateCatCounts();
-  showFormMsg('✓ Saved successfully! Redirecting…','success');
-  setTimeout(()=>{clearForm(); switchTab('products');},1200);
+  showFormMsg('✓ Saved! Reloading from database…','success');
+  await syncSupabase(); // Reload from Supabase to confirm
+  setTimeout(()=>{ clearForm(); switchTab('products'); },1200);
 }
 function clearForm(){
   ['fName','fCat','fSupplier','fSelling','fDesc','fImg','fSrc','fTags'].forEach(id=>{const el=g(id);if(el)el.value='';});
@@ -917,7 +983,7 @@ function showFormMsg(msg,type){
   if(type!=='success')setTimeout(()=>{el.style.display='none';},4000);
 }
 
-// EDIT MODAL
+// ── EDIT MODAL ───────────────────────────────────
 function openEdit(pid){
   const p=products.find(x=>x.id===pid); if(!p)return;
   editingId=pid;
@@ -930,32 +996,68 @@ function closeEdit(){g('editModal').classList.remove('show');g('editBack').class
 function calcEmSell(){const s=parseFloat(g('emSup')?.value)||0;const el=g('emSell');if(el)el.value=s+MARKUP;}
 async function saveEdit(){
   const pid=editingId; if(!pid)return;
-  const idx=products.findIndex(p=>p.id===pid); if(idx<0)return;
-  const upd={...products[idx],name:g('emName').value.trim(),category:g('emCat').value,description:g('emDesc').value.trim(),supplier_price:parseFloat(g('emSup').value),selling_price:parseFloat(g('emSell').value),image_url:g('emImg').value.trim()||catEmoji(g('emCat').value),source:g('emSrc').value.trim()};
-  products[idx]=upd; saveLocalProds(); await dbPatch(pid,upd);
-  closeEdit(); renderProdsTable(); updateDash(); updateBadges(); toast('✅ Product updated!','success');
+  const upd={
+    name:g('emName').value.trim(),
+    category:g('emCat').value,
+    description:g('emDesc').value.trim(),
+    supplier_price:parseFloat(g('emSup').value),
+    selling_price:parseFloat(g('emSell').value),
+    image_url:g('emImg').value.trim()||catEmoji(g('emCat').value),
+    source:g('emSrc').value.trim()
+  };
+  const ok = await dbPatch(pid, upd);
+  if(ok){
+    closeEdit();
+    await syncSupabase(); // Reload from database
+    toast('✅ Product updated in database!','success');
+  } else {
+    toast('❌ Update failed','error');
+  }
 }
 
-// DELETE
+// ── IMAGE UPLOAD IN EDIT MODAL ───────────────────
+function triggerEditImageUpload(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    toast('📤 Uploading image…','info');
+    const url = await uploadImageToSupabase(file);
+    if(url){ g('emImg').value=url; toast('✅ Image uploaded!','success'); }
+    else { toast('❌ Upload failed','error'); }
+  };
+  input.click();
+}
+
+// ── DELETE ───────────────────────────────────────
 function askDel(pid){
   const p=products.find(x=>x.id===pid);
-  confirm2('Delete "'+esc(p?.name||'product')+'"?','This product will be removed from your website.',async()=>{
-    const idx=products.findIndex(x=>x.id===pid); if(idx>=0)products[idx].status='deleted';
-    saveLocalProds(); await dbDel(pid);
-    renderProdsTable(); updateDash(); updateBadges(); updateCatCounts(); toast('Product deleted','error');
-  });
+  confirm2(
+    'Delete "'+esc(p?.name||'product')+'"?',
+    'This will permanently delete it from your database.',
+    async()=>{
+      const ok = await dbDel(pid);
+      if(ok){
+        await syncSupabase(); // Reload from database
+        toast('Product deleted from database','error');
+      } else {
+        toast('❌ Delete failed','error');
+      }
+    }
+  );
 }
 
-// CATEGORIES
+// ── CATEGORIES ───────────────────────────────────
 function updateCatCounts(){
-  const active=products.filter(p=>p.status!=='deleted');
   ['Clothing','Shoes','Perfumes','Kitchen Utensils','Electronics','Bags','Accessories','Other'].forEach(c=>{
-    const n=active.filter(p=>p.category===c).length;
+    const n=products.filter(p=>p.category===c).length;
     const el=g('cnt-'+c); if(el)el.textContent=n+' product'+(n!==1?'s':'');
   });
 }
 
-// AI PARSER
+// ── AI PARSER ────────────────────────────────────
 async function runPipeline(){
   const raw=g('waPasteInput')?.value?.trim();
   if(!raw){setAiMsg('Please paste a WhatsApp message first.','error');return;}
@@ -970,39 +1072,35 @@ async function runPipeline(){
   setAiMsg('✅ Found: <strong>'+esc(res.name)+'</strong> → <strong>'+res.category+'</strong> → ₦'+fmt(res.supplier_price)+' + ₦'+fmt(MARKUP)+' = <strong style="color:var(--accent)">₦'+fmt(res.selling_price)+'</strong>','success');
   setParsing(false);
 }
-
 async function callClaude(msg,key){
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:`Extract product info from this WhatsApp message for a Nigerian resale store. Return ONLY valid JSON.\n\n{"name":"clean name max 60 chars","description":"2-3 sentences","supplier_price":0,"category":"one of: Clothing Shoes Perfumes Kitchen Utensils Electronics Bags Accessories Other","is_product":true}\n\nMessage: "${msg}"\n\nReturn ONLY the JSON.`}]})});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01'},
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,messages:[{role:'user',content:`Extract product info from this WhatsApp message for a Nigerian resale store. Return ONLY valid JSON.\n\n{"name":"clean name max 60 chars","description":"2-3 sentences","supplier_price":0,"category":"one of: Clothing Shoes Perfumes Kitchen Utensils Electronics Bags Accessories Other","is_product":true}\n\nMessage: "${msg}"\n\nReturn ONLY the JSON.`}]})});
     const d=await r.json();
     if(d.error)throw new Error(d.error.message);
     const text=(d.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
     const p=JSON.parse(text);
     if(!p.is_product)return null;
-    if(!p.name||!p.category)throw new Error('incomplete');
     return{name:String(p.name).slice(0,80),description:String(p.description||''),supplier_price:parseFloat(p.supplier_price)||0,category:validCat(p.category)};
-  }catch(e){console.warn('Claude:',e.message);return null;}
+  }catch(e){return null;}
 }
-
 function smartParse(msg){
   if(!msg||msg.length<10)return null;
   const lower=msg.toLowerCase();
   const cat=detectCat(lower);
-  const pp=[/₦\s*([\d,]+)/,/price[:\s]+₦?\s*([\d,]+)/i,/(\d{3,}(?:,\d{3})*)\s*(?:naira|NGN)/i,/just\s+₦?\s*([\d,]+)/i,/=\s*₦?\s*([\d,]+)/,/(\d{4,})/];
+  const pp=[/₦\s*([\d,]+)/,/price[:\s]+₦?\s*([\d,]+)/i,/([\d,]+)\s*(?:naira|NGN)/i,/just\s+₦?\s*([\d,]+)/i,/(\d{4,})/];
   let price=0;
   for(const p of pp){const m=msg.match(p);if(m){const v=parseFloat(m[1].replace(/,/g,''));if(v>=500&&v<=10000000){price=v;break;}}}
   if(price===0)return null;
   const lines=msg.split('\n').map(l=>l.trim()).filter(l=>l.length>3);
   let name='';
-  for(const l of lines){const c=l.replace(/[^\x20-\x7E]/g,'').replace(/https?:\/\/\S+/g,'').replace(/[#@]\w+/g,'').replace(/\s+/g,' ').trim();if(c.length>5&&!/^(call|whatsapp|dm|contact|order|delivery|price|click|link)/i.test(c)){name=c.slice(0,70);break;}}
+  for(const l of lines){const c=l.replace(/[^\x20-\x7E]/g,'').replace(/https?:\/\/\S+/g,'').replace(/[#@]\w+/g,'').replace(/\s+/g,' ').trim();if(c.length>5&&!/^(call|whatsapp|dm|contact|order|delivery|price)/i.test(c)){name=c.slice(0,70);break;}}
   if(!name)name='New '+cat+' Product';
   const desc=lines.slice(0,4).map(l=>l.replace(/[^\x20-\x7E]/g,'').replace(/https?:\/\/\S+/g,'').replace(/[#@]\w+/g,'').trim()).filter(l=>l.length>3).join(' ').slice(0,300);
   return{name,description:desc,supplier_price:price,category:cat};
 }
-
 function detectCat(lower){for(const[c,ks]of Object.entries(CAT_KEYS)){if(ks.some(k=>lower.includes(k)))return c;}return'Other';}
 function validCat(c){const v=['Clothing','Shoes','Perfumes','Kitchen Utensils','Electronics','Bags','Accessories','Other'];return v.includes(c)?c:detectCat(c.toLowerCase());}
-
 function displayAiResult(r){
   g('airName').value=r.name||''; g('airCat').value=r.category||'Other';
   g('airPrice').value=r.supplier_price||''; g('airSelling').value=r.selling_price||'';
@@ -1011,7 +1109,6 @@ function displayAiResult(r){
   const badge=g('catDetected'); if(badge){badge.innerHTML=catEmoji(r.category)+' Auto-detected: <strong>'+r.category+'</strong>';badge.style.display='inline-flex';}
 }
 function calcAirPrice(){const p=parseFloat(g('airPrice')?.value)||0;const el=g('airSelling');if(el)el.value=p+MARKUP;}
-
 async function saveFromAI(){
   const name=g('airName')?.value?.trim();
   const cat=g('airCat')?.value;
@@ -1020,17 +1117,18 @@ async function saveFromAI(){
   const desc=g('airDesc')?.value?.trim()||'';
   if(!name||!cat){toast('❌ Name and category required','error');return;}
   const btn=g('saveAiBtn'); if(btn){btn.textContent='⏳ Saving…';btn.disabled=true;}
-  const np={id:Date.now().toString(),name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:catEmoji(cat),source:'WhatsApp (AI Parsed)',status:'active',created_at:new Date().toISOString()};
-  const saved=await dbAdd('products',{name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:np.image_url,source:np.source,status:'active'});
-  if(saved&&saved[0])np.id=saved[0].id;
-  products.unshift(np); saveLocalProds(); updateBadges(); updateDash(); updateCatCounts();
-  addToHistory(np);
-  setAiMsg('🎉 <strong>'+esc(name)+'</strong> saved to <strong>'+cat+'</strong>! '+(saved?'✅ Live on website!':'💾 Saved locally.'),'success');
-  toast('✅ '+name+' → '+cat+' — Live!','success');
+  const saved=await dbAdd('products',{name,category:cat,supplier_price:sup,selling_price:sell,description:desc,image_url:catEmoji(cat),source:'WhatsApp (AI Parsed)',status:'active'});
+  if(saved){
+    await syncSupabase();
+    addToHistory({name,category:cat,supplier_price:sup,selling_price:sell});
+    setAiMsg('🎉 <strong>'+esc(name)+'</strong> saved to database! ✅ Live on website!','success');
+    toast('✅ '+name+' → '+cat+' — Live!','success');
+  } else {
+    toast('❌ Save failed','error');
+  }
   if(btn){btn.textContent='✅ Saved & Live!';btn.disabled=false;}
   setTimeout(()=>{g('waPasteInput').value='';clearAiResult();if(btn)btn.textContent='💾 Save & Make Live on Website';},3000);
 }
-
 async function runBulk(){
   const txt=g('waBulkInput')?.value?.trim();
   if(!txt){toast('Paste messages separated by blank lines','error');return;}
@@ -1045,23 +1143,20 @@ async function runBulk(){
     if(!ext)ext=smartParse(msgs[i]);
     if(ext?.name){
       ext.selling_price=(ext.supplier_price||0)+MARKUP;
-      const p={id:(Date.now()+i).toString(),name:ext.name,category:ext.category,supplier_price:ext.supplier_price,selling_price:ext.selling_price,description:ext.description||'',image_url:catEmoji(ext.category),source:'WhatsApp Bulk',status:'active',created_at:new Date().toISOString()};
-      await dbAdd('products',{name:p.name,category:p.category,supplier_price:p.supplier_price,selling_price:p.selling_price,description:p.description,image_url:p.image_url,source:p.source,status:'active'});
-      products.unshift(p); res.push(p); saved++;
+      const ok=await dbAdd('products',{name:ext.name,category:ext.category,supplier_price:ext.supplier_price,selling_price:ext.selling_price,description:ext.description||'',image_url:catEmoji(ext.category),source:'WhatsApp Bulk',status:'active'});
+      if(ok){res.push(ext);saved++;}
     }
     await new Promise(r=>setTimeout(r,300));
   }
-  saveLocalProds(); updateBadges(); updateDash(); updateCatCounts();
-  if(stEl)stEl.innerHTML='✅ <strong>'+saved+' products saved!</strong><br>'+res.map(p=>'• '+esc(p.name)+' → <strong>'+p.category+'</strong> → ₦'+fmt(p.selling_price)).join('<br>');
+  await syncSupabase();
+  if(stEl)stEl.innerHTML='✅ <strong>'+saved+' products saved to database!</strong><br>'+res.map(p=>'• '+esc(p.name)+' → <strong>'+p.category+'</strong>').join('<br>');
   toast('✅ '+saved+' products added!','success');
   g('waBulkInput').value='';
 }
-
 function sendToForm(){
   const v=id=>g(id)?.value||'';
   g('fName').value=v('airName'); g('fCat').value=v('airCat');
-  g('fDesc').value=v('airDesc'); g('fSupplier').value=v('airPrice');
-  g('fSelling').value=v('airSelling');
+  g('fDesc').value=v('airDesc'); g('fSupplier').value=v('airPrice'); g('fSelling').value=v('airSelling');
   calcPrice(); switchTab('add-product'); updatePrev(); toast('📋 Sent to product form!','info');
 }
 function clearPasteInput(){const el=g('waPasteInput');if(el)el.value='';setAiMsg('','');clearAiResult();}
@@ -1069,7 +1164,7 @@ function clearAiResult(){const c=g('aiResultCard');if(c)c.style.display='none';[
 function setAiMsg(html,type){const el=g('aiMsg');if(el){el.innerHTML=html;el.className='aimsg '+(type||'');}}
 function setParsing(on){const btn=g('parseBtn'),txt=g('parseBtnTxt');if(btn)btn.disabled=on;if(txt)txt.textContent=on?'⏳ Parsing…':'⚡ Auto-Parse & Categorize';}
 function addToHistory(p){
-  parseHist.unshift({id:p.id,name:p.name,category:p.category,supplier_price:p.supplier_price,selling_price:p.selling_price,timestamp:new Date().toISOString()});
+  parseHist.unshift({name:p.name,category:p.category,supplier_price:p.supplier_price,selling_price:p.selling_price,timestamp:new Date().toISOString()});
   localStorage.setItem('ayomi_parse_history',JSON.stringify(parseHist.slice(0,30)));
   renderParseHist();
 }
@@ -1079,7 +1174,7 @@ function renderParseHist(){
   c.innerHTML=parseHist.slice(0,10).map(h=>`<div class="histitem"><div class="histemoji">${catEmoji(h.category)}</div><div class="histinfo"><strong>${esc(h.name)}</strong><span>${h.category} · ${new Date(h.timestamp).toLocaleDateString('en-NG')}</span></div><div class="histprice"><span class="his">₦${fmt(h.supplier_price)}</span><span style="margin:0 4px;color:var(--muted)">→</span><span class="hisel">₦${fmt(h.selling_price)}</span></div></div>`).join('');
 }
 
-// ORDERS
+// ── ORDERS ───────────────────────────────────────
 function renderOrders(filter,btn){
   filter=filter||'all';
   if(btn){document.querySelectorAll('.ofbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
@@ -1090,17 +1185,17 @@ function renderOrders(filter,btn){
 }
 function updOrder(oid,status){const o=orders.find(x=>x.id===oid);if(o){o.status=status;localStorage.setItem('ayomi_orders',JSON.stringify(orders));toast('Order updated: '+status,'success');}}
 function addDemoOrder(){
-  const active=products.filter(p=>p.status!=='deleted'); if(!active.length){toast('Add products first','error');return;}
-  const p=active[Math.floor(Math.random()*active.length)];
+  if(!products.length){toast('Add products first','error');return;}
+  const p=products[Math.floor(Math.random()*products.length)];
   const names=['Chioma Okafor','Bola Adeyemi','Fatima Ibrahim','Grace Ezekwesili','Amaka Nwosu'];
   const phones=['08012345678','08087654321','07055556666','08133337777','09012348765'];
   const r=Math.floor(Math.random()*names.length);
   const o={id:'ORD-'+Date.now(),product_id:p.id,product_name:p.name,buyer_name:names[r],phone:phones[r],address:'Lagos, Nigeria',amount:p.selling_price,status:'pending',created_at:new Date().toISOString()};
   orders.unshift(o); localStorage.setItem('ayomi_orders',JSON.stringify(orders));
-  updateBadges(); renderOrders(); setText('sOrd',orders.length); toast('Sample order added: '+p.name,'info');
+  updateBadges(); renderOrders(); setText('sOrd',orders.length); toast('Sample order added','info');
 }
 
-// SETTINGS
+// ── SETTINGS ─────────────────────────────────────
 function saveContact(){
   const wa=g('sWa')?.value?.trim(),ph=g('sPhone')?.value?.trim(),em=g('sEmail')?.value?.trim();
   if(wa)localStorage.setItem('ayomi_wa',wa);if(ph)localStorage.setItem('ayomi_phone',ph);if(em)localStorage.setItem('ayomi_email',em);
@@ -1112,7 +1207,7 @@ function saveMarkup(){
 }
 function saveAiKey(){
   const v=g('sAiKey')?.value?.trim();
-  if(v){localStorage.setItem('ayomi_ai_key',v);toast('✅ AI key saved — AI parsing is now active!','success');}
+  if(v){localStorage.setItem('ayomi_ai_key',v);toast('✅ AI key saved!','success');}
 }
 async function changePw(){
   const nw=g('sNewPw')?.value,conf=g('sConfPw')?.value;
@@ -1124,15 +1219,21 @@ async function changePw(){
   else{el.textContent='✓ Password updated!';el.className='formfb success';g('sNewPw').value='';g('sConfPw').value='';toast('🔐 Password changed!','success');}
 }
 function exportProds(){
-  const active=products.filter(p=>p.status!=='deleted');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(active,null,2)],{type:'application/json'}));a.download='ayomi-products-'+new Date().toISOString().slice(0,10)+'.json';a.click();
-  toast('📤 '+active.length+' products exported!','success');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(products,null,2)],{type:'application/json'}));
+  a.download='ayomi-products-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('📤 '+products.length+' products exported!','success');
 }
 function clearAllProds(){
-  confirm2('Clear ALL Products?','Every product will be permanently deleted.',()=>{products=[];saveLocalProds();updateDash();updateBadges();updateCatCounts();renderProdsTable();toast('🗑️ All products cleared','error');});
+  confirm2('Clear ALL Products?','This will delete ALL products from your database permanently!',async()=>{
+    for(const p of products){ await dbDel(p.id); }
+    await syncSupabase();
+    toast('🗑️ All products cleared from database','error');
+  });
 }
 
-// CONFIRM MODAL
+// ── CONFIRM MODAL ────────────────────────────────
 function confirm2(title,msg,fn){
   setText('confTitle',title);setText('confMsg',msg);
   g('confBack').classList.add('show');g('confModal').classList.add('show');
@@ -1140,15 +1241,14 @@ function confirm2(title,msg,fn){
 }
 function closeConf(){g('confBack').classList.remove('show');g('confModal').classList.remove('show');}
 
-// BADGES
+// ── BADGES ───────────────────────────────────────
 function updateBadges(){
-  const a=products.filter(p=>p.status!=='deleted').length;
+  const bp=g('bdgProd');if(bp)bp.textContent=products.length;
   const pe=orders.filter(o=>o.status==='pending').length;
-  const bp=g('bdgProd');if(bp)bp.textContent=a;
   const bo=g('bdgOrders');if(bo)bo.textContent=pe;
 }
 
-// TOAST
+// ── TOAST ────────────────────────────────────────
 function toast(msg,type){
   type=type||'info';
   const c=g('toastWrap');if(!c)return;
@@ -1156,7 +1256,7 @@ function toast(msg,type){
   setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(55px)';setTimeout(()=>t.remove(),400);},3500);
 }
 
-// HELPERS
+// ── HELPERS ──────────────────────────────────────
 function g(i){return document.getElementById(i);}
 function setText(i,v){const el=g(i);if(el)el.textContent=v;}
 function fmt(n){return Number(n||0).toLocaleString('en-NG');}
@@ -1167,7 +1267,6 @@ function imgH(url){if(!url)return'📦';if(url.startsWith('http'))return`<img sr
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeEdit();closeConf();}
   if(e.ctrlKey&&e.key==='n'){e.preventDefault();switchTab('add-product');}
-  if(e.ctrlKey&&e.key==='p'){e.preventDefault();switchTab('ai-parser');}
 });
 </script>
 </body>
